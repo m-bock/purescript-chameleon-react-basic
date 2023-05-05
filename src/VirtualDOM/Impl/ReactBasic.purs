@@ -32,7 +32,7 @@ runReactHTMLKeyed ctx handler (key /\ ReactHTML f) = f ctx handler (Just key)
 runReactHTML :: forall ctx a. ctx -> (a -> Effect Unit) -> ReactHTML ctx a -> JSX
 runReactHTML ctx handler (ReactHTML f) = f ctx handler Nothing
 
-instance Html ReactHTML where
+instance Html (ReactHTML ctx) ctx where
   elem (ElemName name) props1 children1 = ReactHTML $ \ctx handleAction _ ->
     let
 
@@ -56,8 +56,6 @@ instance Html ReactHTML where
       foreignFn (element $ mkComp name) props3
 
   text str = ReactHTML $ \_ _ _ -> DOM.text str
-
-  mapCtx f (ReactHTML mkJsx) = ReactHTML \ctx handleAction -> mkJsx (f ctx) handleAction
 
   withCtx mkHtml = ReactHTML \ctx handleAction _ -> runReactHTML ctx handleAction (mkHtml ctx)
 

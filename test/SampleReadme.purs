@@ -36,7 +36,7 @@ counterUpdate msg state = case msg of
   Increment n -> state + n
   Decrement n -> state - n
 
-counterView :: forall html ctx. Html html => { count :: Int } -> html ctx Msg
+counterView :: forall html ctx. Html html ctx => { count :: Int } -> html Msg
 counterView props =
   V.div
     [ VA.style "border: 1px solid red"

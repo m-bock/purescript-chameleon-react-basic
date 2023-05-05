@@ -1,6 +1,10 @@
 # purescript-virtual-dom-react-basic
+
 React Basic implementation of the general `Html` class from the
-[virtual-dom](https://github.com/thought2/purescript-virtual-dom) package. You can write your web views in a framework agnostic way and this package can convert them to react-basic components (and therefore to actual React components as well). 
+[virtual-dom](https://github.com/thought2/purescript-virtual-dom) package.
+You can write your web views in a framework agnostic way and this package can
+convert them to react-basic views (and therefore to actual React
+components as well).
 
 ## Example
 ```hs
@@ -13,9 +17,9 @@ import Effect (Effect)
 import React.Basic.DOM.Client as ReactBasicDOM
 import React.Basic.Hooks as React
 import VirtualDOM (class Html, text)
-import VirtualDOM.HTML.Attributes as TA
-import VirtualDOM.HTML.Elements as T
-import VirtualDOM.HTML.Events as TE
+import VirtualDOM.HTML.Attributes as VA
+import VirtualDOM.HTML.Elements as V
+import VirtualDOM.HTML.Events as VE
 import VirtualDOM.Impl.ReactBasic as VirtualDOM.React
 import Web.DOM as DOM
 ```
@@ -32,16 +36,16 @@ counterUpdate msg state = case msg of
   Increment n -> state + n
   Decrement n -> state - n
 
-counterView :: forall html ctx. Html html => { count :: Int } -> html ctx Msg
+counterView :: forall html ctx. Html html ctx => { count :: Int } -> html Msg
 counterView props =
-  T.div
-    [ TA.style "border: 1px solid red"
+  V.div
+    [ VA.style "border: 1px solid red"
     ]
     [ text "Counter"
-    , T.div [] [ text $ show props.count ]
-    , T.button [ TE.onClick (Increment 1) ]
+    , V.div [] [ text $ show props.count ]
+    , V.button [ VE.onClick (Increment 1) ]
         [ text "+" ]
-    , T.button [ TE.onClick (Decrement 1) ]
+    , V.button [ VE.onClick (Decrement 1) ]
         [ text "-" ]
     ]
 ```
@@ -60,7 +64,7 @@ mkApp = do
       $ VirtualDOM.React.runReactHTML unit handler
       $ counterView { count: state }
 ```
-### Main
+### Mount React component
 ```hs
 foreign import elemById :: String -> Effect DOM.Element
 
