@@ -1,7 +1,11 @@
 module VirtualDOM.Impl.ReactBasic
-  ( ReactHTML
-  , runReactHTML
-  ) where
+  ( ReactHtml
+  , ReactHtmlCtx(..)
+  , runReactHtml
+  , runReactHtmlCtx
+  , runReactHtmlKeyed
+  )
+  where
 
 import Prelude
 
@@ -15,49 +19,52 @@ import Effect.Unsafe (unsafePerformEffect)
 import Foreign (Foreign)
 import Foreign.Object (Object)
 import Foreign.Object as Obj
+import React.Basic (JSX, ReactComponent, element)
 import React.Basic.DOM (text) as DOM
 import React.Basic.DOM (unsafeCreateDOMComponent)
-import React.Basic (JSX, ReactComponent, element)
-import VirtualDOM (class Html, ElemName(..), Key, Prop(..))
 import Unsafe.Coerce (unsafeCoerce)
+import VirtualDOM (class Ctx, class Html, ElemName(..), Key, Prop(..))
+import VirtualDOM as V
 
-newtype ReactHTML ctx a = ReactHTML (ctx -> (a -> Effect Unit) -> Maybe Key -> JSX)
+--------------------------------------------------------------------------------
+--- ReactHtml
+--------------------------------------------------------------------------------
 
-instance Functor (ReactHTML ctx) where
-  map f (ReactHTML mkJsx) = ReactHTML \ctx handler -> mkJsx ctx (f >>> handler)
+newtype ReactHtml a = ReactHtml ((a -> Effect Unit) -> Maybe Key -> JSX)
 
-runReactHTMLKeyed :: forall ctx a. ctx -> (a -> Effect Unit) -> Key /\ ReactHTML ctx a -> JSX
-runReactHTMLKeyed ctx handler (key /\ ReactHTML f) = f ctx handler (Just key)
+instance Functor ReactHtml where
+  map f (ReactHtml mkJsx) = ReactHtml \handler -> mkJsx (f >>> handler)
 
-runReactHTML :: forall ctx a. ctx -> (a -> Effect Unit) -> ReactHTML ctx a -> JSX
-runReactHTML ctx handler (ReactHTML f) = f ctx handler Nothing
+runReactHtmlKeyed :: forall a. (a -> Effect Unit) -> Key /\ ReactHtml a -> JSX
+runReactHtmlKeyed handler (key /\ ReactHtml f) = f handler (Just key)
 
-instance Html (ReactHTML ctx) ctx where
-  elem (ElemName name) props1 children1 = ReactHTML $ \ctx handleAction _ ->
+runReactHtml :: forall a. (a -> Effect Unit) -> ReactHtml a -> JSX
+runReactHtml handler (ReactHtml f) = f handler Nothing
+
+instance Html ReactHtml where
+  elem (ElemName name) props1 children1 = ReactHtml $ \handleAction _ ->
     let
 
       props2 = Obj.fromFoldable $ mkProp handleAction <$> props1
       props3 = Obj.insert "children" (toForeign children2) props2
 
-      children2 = runReactHTML ctx handleAction <$> children1
+      children2 = runReactHtml handleAction <$> children1
 
     in
       foreignFn (element $ mkComp name) props3
 
-  elemKeyed (ElemName name) props1 children1 = ReactHTML $ \ctx handleAction key ->
+  elemKeyed (ElemName name) props1 children1 = ReactHtml $ \handleAction key ->
     let
 
       props2 = Obj.fromFoldable $ mkProp handleAction <$> props1
       props3 = Obj.insert "children" (toForeign children2) props2
 
-      children2 = runReactHTMLKeyed ctx handleAction <$> children1
+      children2 = runReactHtmlKeyed handleAction <$> children1
 
     in
       foreignFn (element $ mkComp name) props3
 
-  text str = ReactHTML $ \_ _ _ -> DOM.text str
-
-  withCtx mkHtml = ReactHTML \ctx handleAction _ -> runReactHTML ctx handleAction (mkHtml ctx)
+  text str = ReactHtml $ \_ _ -> DOM.text str
 
 mkProp :: forall a. (a -> Effect Unit) -> Prop a -> String /\ Foreign
 mkProp handleAction = case _ of
@@ -96,3 +103,23 @@ instance ToForeign (EffectFn1 Foreign Unit) where
 class ToForeign a where
   toForeign :: a -> Foreign
 
+--------------------------------------------------------------------------------
+
+newtype ReactHtmlCtx ctx a = ReactHtmlCtx (ctx -> ReactHtml a)
+
+derive instance Functor (ReactHtmlCtx ctx)
+
+instance Html (ReactHtmlCtx ctx) where
+  elem elemName props children = ReactHtmlCtx \ctx ->
+    V.elem elemName props (runReactHtmlCtx ctx <$> children)
+
+  elemKeyed elemName props children = ReactHtmlCtx \ctx ->
+    V.elemKeyed elemName props ((\(key /\ html) -> key /\ runReactHtmlCtx ctx html) <$> children)
+
+  text str = ReactHtmlCtx \_ -> V.text str
+
+instance Ctx (ReactHtmlCtx ctx) ctx where
+  withCtx mkHtml = ReactHtmlCtx \ctx -> runReactHtmlCtx ctx (mkHtml ctx)
+
+runReactHtmlCtx :: forall ctx a. ctx -> ReactHtmlCtx ctx a -> ReactHtml a
+runReactHtmlCtx ctx (ReactHtmlCtx f) = f ctx

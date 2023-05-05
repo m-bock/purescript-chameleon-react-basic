@@ -36,7 +36,7 @@ counterUpdate msg state = case msg of
   Increment n -> state + n
   Decrement n -> state - n
 
-counterView :: forall html ctx. Html html ctx => { count :: Int } -> html Msg
+counterView :: forall html. Html html => { count :: Int } -> html Msg
 counterView props =
   V.div
     [ VA.style "border: 1px solid red"
@@ -61,7 +61,7 @@ mkApp = do
       handler msg = setState $ counterUpdate msg
 
     pure
-      $ VirtualDOM.React.runReactHTML unit handler
+      $ VirtualDOM.React.runReactHtml handler
       $ counterView { count: state }
 
 -- ### Mount React component
