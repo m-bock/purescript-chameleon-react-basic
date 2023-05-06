@@ -1,6 +1,7 @@
 { name = "virtual-dom-react-basic-test"
 , dependencies =
-  [ "console"
+  [ "arrays"
+  , "console"
   , "effect"
   , "foreign"
   , "foreign-object"

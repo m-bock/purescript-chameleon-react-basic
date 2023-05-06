@@ -2,26 +2,25 @@ module VirtualDOM.Impl.ReactBasic
   ( ReactHtml
   , ReactHtmlCtx(..)
   , runReactHtml
+  , runReactHtml'
   , runReactHtmlCtx
   , runReactHtmlKeyed
-  )
-  where
+  ) where
 
 import Prelude
 
+import Data.Array as Arr
 import Data.Maybe (Maybe(..))
 import Data.String (toUpper)
 import Data.String as Str
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect (Effect)
 import Effect.Uncurried (EffectFn1, mkEffectFn1)
-import Effect.Unsafe (unsafePerformEffect)
 import Foreign (Foreign)
 import Foreign.Object (Object)
 import Foreign.Object as Obj
-import React.Basic (JSX, ReactComponent, element)
+import React.Basic (JSX)
 import React.Basic.DOM (text) as DOM
-import React.Basic.DOM (unsafeCreateDOMComponent)
 import Unsafe.Coerce (unsafeCoerce)
 import VirtualDOM (class Ctx, class Html, ElemName(..), Key, Prop(..))
 import VirtualDOM as V
@@ -29,46 +28,56 @@ import VirtualDOM as V
 --------------------------------------------------------------------------------
 --- ReactHtml
 --------------------------------------------------------------------------------
+type Env a =
+  { handler :: a -> Effect Unit
+  , key :: Maybe Key
+  }
 
-newtype ReactHtml a = ReactHtml ((a -> Effect Unit) -> Maybe Key -> JSX)
+newtype ReactHtml a = ReactHtml (Env a -> JSX)
 
 instance Functor ReactHtml where
-  map f (ReactHtml mkJsx) = ReactHtml \handler -> mkJsx (f >>> handler)
+  map f (ReactHtml mkJsx) = ReactHtml \env -> mkJsx env
+    { handler = f >>> env.handler
+    }
 
 runReactHtmlKeyed :: forall a. (a -> Effect Unit) -> Key /\ ReactHtml a -> JSX
-runReactHtmlKeyed handler (key /\ ReactHtml f) = f handler (Just key)
+runReactHtmlKeyed handler (key /\ ReactHtml mkJsx) = mkJsx { handler, key: Just key }
+
+runReactHtml' :: forall a r. (r -> ReactHtml a) -> Effect ({ props :: r, handler :: (a -> Effect Unit) } -> JSX)
+runReactHtml' f = pure \r -> case f r.props of
+  ReactHtml x -> x { handler: r.handler, key: Nothing }
 
 runReactHtml :: forall a. (a -> Effect Unit) -> ReactHtml a -> JSX
-runReactHtml handler (ReactHtml f) = f handler Nothing
+runReactHtml handler (ReactHtml f) = f { handler, key: Nothing }
 
 instance Html ReactHtml where
-  elem (ElemName name) props1 children1 = ReactHtml $ \handleAction _ ->
+  elem (ElemName name) props1 children1 = ReactHtml $ \env ->
     let
-
-      props2 = Obj.fromFoldable $ mkProp handleAction <$> props1
-      props3 = Obj.insert "children" (toForeign children2) props2
-
-      children2 = runReactHtml handleAction <$> children1
-
+      props2 = Obj.fromFoldable $ mkProp env.handler <$> props1
+      children2 = runReactHtml env.handler <$> children1
     in
-      foreignFn (element $ mkComp name) props3
+      if Arr.null children2 then
+        createVoidElement name props2
+      else
+        createElement name props2 children2
 
-  elemKeyed (ElemName name) props1 children1 = ReactHtml $ \handleAction key ->
+  elemKeyed (ElemName name) props1 children1 = ReactHtml $ \env ->
     let
-
-      props2 = Obj.fromFoldable $ mkProp handleAction <$> props1
-      props3 = Obj.insert "children" (toForeign children2) props2
-
-      children2 = runReactHtmlKeyed handleAction <$> children1
-
+      props2 = Obj.fromFoldable $ mkProp env.handler <$> props1
+      children2 = runReactHtmlKeyed env.handler <$> children1
     in
-      foreignFn (element $ mkComp name) props3
+      if Arr.null children2 then
+        createVoidElement name props2
+      else
+        createElement name props2 children2
 
-  text str = ReactHtml $ \_ _ -> DOM.text str
+  text str = ReactHtml $ \_ -> DOM.text str
 
 mkProp :: forall a. (a -> Effect Unit) -> Prop a -> String /\ Foreign
 mkProp handleAction = case _ of
   Attr "style" v -> "STYLE" /\ toForeign v
+  -- ^ This is a hack to provide styles as string to React
+  -- It creates a warning in the console, so it should be replaced with something better
   Attr k v -> k /\ toForeign v
   Event n f -> ("on" <> upperFirst n) /\ toForeign
     ( mkEffectFn1 \event -> case f event of
@@ -76,11 +85,9 @@ mkProp handleAction = case _ of
         Nothing -> pure unit
     )
 
-mkComp :: forall r. String -> ReactComponent (Record r)
-mkComp name = unsafePerformEffect (unsafeCreateDOMComponent name)
+foreign import createVoidElement :: String -> Object Foreign -> JSX
 
-foreignFn :: forall r. (Record r -> JSX) -> Object Foreign -> JSX
-foreignFn = unsafeCoerce
+foreign import createElement :: String -> Object Foreign -> Array JSX -> JSX
 
 upperFirst :: String -> String
 upperFirst str =
