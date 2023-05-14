@@ -1,10 +1,11 @@
 module VirtualDOM.Impl.ReactBasic
-  ( ReactHtml
+  ( Config
+  , ConfigOpt
+  , ReactHtml
   , ReactHtmlCtx(..)
+  , defaultConfig
   , runReactHtml
-  , runReactHtml'
   , runReactHtmlCtx
-  , runReactHtmlKeyed
   ) where
 
 import Prelude
@@ -28,60 +29,65 @@ import VirtualDOM as V
 --------------------------------------------------------------------------------
 --- ReactHtml
 --------------------------------------------------------------------------------
-type Env a =
-  { handler :: a -> Effect Unit
+
+type ConfigOpt =
+  { cssStringToAttr :: String -> String /\ Foreign
   , key :: Maybe Key
   }
 
-newtype ReactHtml a = ReactHtml (Env a -> JSX)
+type Config a =
+  { handler :: a -> Effect Unit
+  }
+
+defaultConfig :: ConfigOpt
+defaultConfig =
+  { cssStringToAttr: \str -> "STYLE" /\ toForeign str
+  -- ^ This is a hack to provide styles as string to React
+  -- It creates a warning in the console, you can provide a custom parser to avoid it
+  , key: Nothing
+  }
+
+newtype ReactHtml a = ReactHtml (Config a -> ConfigOpt -> JSX)
 
 instance Functor ReactHtml where
   map f (ReactHtml mkJsx) = ReactHtml \env -> mkJsx env
     { handler = f >>> env.handler
     }
 
-runReactHtmlKeyed :: forall a. (a -> Effect Unit) -> Key /\ ReactHtml a -> JSX
-runReactHtmlKeyed handler (key /\ ReactHtml mkJsx) = mkJsx { handler, key: Just key }
-
-runReactHtml' :: forall a r. (r -> ReactHtml a) -> Effect ({ props :: r, handler :: (a -> Effect Unit) } -> JSX)
-runReactHtml' f = pure \r -> case f r.props of
-  ReactHtml x -> x { handler: r.handler, key: Nothing }
-
-runReactHtml :: forall a. (a -> Effect Unit) -> ReactHtml a -> JSX
-runReactHtml handler (ReactHtml f) = f { handler, key: Nothing }
+runReactHtml :: forall a. Config a -> ConfigOpt -> ReactHtml a -> JSX
+runReactHtml cfg cfgOpt (ReactHtml f) =
+  f cfg cfgOpt
 
 instance Html ReactHtml where
-  elem (ElemName name) props1 children1 = ReactHtml $ \env ->
+  elem (ElemName name) props1 children1 = ReactHtml $ \cfg cfgOpt ->
     let
-      props2 = Obj.fromFoldable $ mkProp env.handler <$> props1
-      children2 = runReactHtml env.handler <$> children1
+      props2 = Obj.fromFoldable $ mkProp cfg cfgOpt <$> props1
+      children2 = (\jsx -> runReactHtml cfg cfgOpt { key = Nothing } jsx) <$> children1
     in
       if Arr.null children2 then
         createVoidElement name props2
       else
         createElement name props2 children2
 
-  elemKeyed (ElemName name) props1 children1 = ReactHtml $ \env ->
+  elemKeyed (ElemName name) props1 children1 = ReactHtml $ \cfg cfgOpt ->
     let
-      props2 = Obj.fromFoldable $ mkProp env.handler <$> props1
-      children2 = runReactHtmlKeyed env.handler <$> children1
+      props2 = Obj.fromFoldable $ mkProp cfg cfgOpt <$> props1
+      children2 = (\(key /\ jsx) -> runReactHtml cfg cfgOpt { key = Just key } jsx) <$> children1
     in
       if Arr.null children2 then
         createVoidElement name props2
       else
         createElement name props2 children2
 
-  text str = ReactHtml $ \_ -> DOM.text str
+  text str = ReactHtml $ \_ _ -> DOM.text str
 
-mkProp :: forall a. (a -> Effect Unit) -> Prop a -> String /\ Foreign
-mkProp handleAction = case _ of
-  Attr "style" v -> "STYLE" /\ toForeign v
-  -- ^ This is a hack to provide styles as string to React
-  -- It creates a warning in the console, so it should be replaced with something better
+mkProp :: forall a. Config a -> ConfigOpt -> Prop a -> String /\ Foreign
+mkProp { handler } { cssStringToAttr } = case _ of
+  Attr "style" v -> cssStringToAttr v
   Attr k v -> k /\ toForeign v
   Event n f -> ("on" <> upperFirst n) /\ toForeign
     ( mkEffectFn1 \event -> case f event of
-        Just action -> handleAction action
+        Just action -> handler action
         Nothing -> pure unit
     )
 
