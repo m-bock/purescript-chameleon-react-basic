@@ -23,7 +23,7 @@ import Foreign.Object as Obj
 import React.Basic (JSX)
 import React.Basic.DOM (text) as DOM
 import Unsafe.Coerce (unsafeCoerce)
-import VirtualDOM (class Ctx, class Html, ElemName(..), Key, Prop(..))
+import VirtualDOM (class Ctx, class CtxHtml, class Html, ElemName(..), Key, Prop(..))
 import VirtualDOM as V
 
 --------------------------------------------------------------------------------
@@ -133,6 +133,9 @@ instance Html (ReactHtmlCtx ctx) where
 
 instance Ctx (ReactHtmlCtx ctx) ctx where
   withCtx mkHtml = ReactHtmlCtx \ctx -> runReactHtmlCtx ctx (mkHtml ctx)
+  setCtx ctx html = ReactHtmlCtx \_ -> runReactHtmlCtx ctx html
+
+instance CtxHtml (ReactHtmlCtx ctx) ctx
 
 runReactHtmlCtx :: forall ctx a. ctx -> ReactHtmlCtx ctx a -> ReactHtml a
 runReactHtmlCtx ctx (ReactHtmlCtx f) = f ctx
