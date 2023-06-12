@@ -2,10 +2,8 @@ module VirtualDOM.Impl.ReactBasic.Html
   ( Config
   , ConfigOpt
   , ReactHtml
-  , ReactHtmlCtx(..)
   , defaultConfig
   , runReactHtml
-  , runReactHtmlCtx
   ) where
 
 import Prelude
@@ -23,8 +21,7 @@ import Foreign.Object as Obj
 import React.Basic (JSX)
 import React.Basic.DOM (text) as DOM
 import Unsafe.Coerce (unsafeCoerce)
-import VirtualDOM (class Ctx, class CtxHtml, class Html, ElemName(..), Key, Prop(..))
-import VirtualDOM as V
+import VirtualDOM (class Html, ElemName(..), Key, Prop(..))
 
 --------------------------------------------------------------------------------
 --- ReactHtml
@@ -115,27 +112,3 @@ instance ToForeign (EffectFn1 Foreign Unit) where
 
 class ToForeign a where
   toForeign :: a -> Foreign
-
---------------------------------------------------------------------------------
-
-newtype ReactHtmlCtx ctx a = ReactHtmlCtx (ctx -> ReactHtml a)
-
-derive instance Functor (ReactHtmlCtx ctx)
-
-instance Html (ReactHtmlCtx ctx) where
-  elem elemName props children = ReactHtmlCtx \ctx ->
-    V.elem elemName props (runReactHtmlCtx ctx <$> children)
-
-  elemKeyed elemName props children = ReactHtmlCtx \ctx ->
-    V.elemKeyed elemName props ((\(key /\ html) -> key /\ runReactHtmlCtx ctx html) <$> children)
-
-  text str = ReactHtmlCtx \_ -> V.text str
-
-instance Ctx (ReactHtmlCtx ctx) ctx where
-  withCtx mkHtml = ReactHtmlCtx \ctx -> runReactHtmlCtx ctx (mkHtml ctx)
-  setCtx ctx html = ReactHtmlCtx \_ -> runReactHtmlCtx ctx html
-
-instance CtxHtml (ReactHtmlCtx ctx) ctx
-
-runReactHtmlCtx :: forall ctx a. ctx -> ReactHtmlCtx ctx a -> ReactHtml a
-runReactHtmlCtx ctx (ReactHtmlCtx f) = f ctx
