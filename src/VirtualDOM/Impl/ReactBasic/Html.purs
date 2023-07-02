@@ -44,41 +44,6 @@ defaultConfig =
   , key: Nothing
   }
 
--- | This is a hack to provide styles as string to React
--- | It creates a warning in the console
-uppercaseStyleHack :: String -> String /\ Foreign
-uppercaseStyleHack str = "STYLE" /\ toForeign str
-
--- | This is a very simple parser for CSS strings
--- | It does not work for all cases, but it is enough for most of them
-simpleSplit :: String -> String /\ Foreign
-simpleSplit str =
-  let
-    decls :: Array String
-    decls = Str.split (Pattern ";") str
-
-    entries :: Array (String /\ String)
-    entries = map mkEntry decls
-
-    object :: Object String
-    object = Obj.fromFoldable entries
-
-    object' :: Object Foreign
-    object' = map toForeign object
-  in
-    "style" /\ toForeign object'
-
-  where
-  mkEntry :: String -> String /\ String
-  mkEntry str' =
-    let
-      parts :: Array String
-      parts = Str.split (Pattern ":") str'
-    in
-      case Array.uncons parts of
-        Just { head, tail } -> head /\ Str.joinWith ":" tail
-        _ -> "" /\ ""
-
 newtype ReactHtml a = ReactHtml (Config a -> ConfigOpt -> JSX)
 
 instance Functor ReactHtml where
@@ -123,15 +88,59 @@ mkProp { handler } { cssStringToAttr } = case _ of
         Nothing -> pure unit
     )
 
+-------------------------------------------------------------------------------
+--- CSS Converter
+-------------------------------------------------------------------------------
+
+-- | This is a hack to provide styles as string to React
+-- | It creates a warning in the console
+uppercaseStyleHack :: String -> String /\ Foreign
+uppercaseStyleHack str = "STYLE" /\ toForeign str
+
+-- | This is a very simple parser for CSS strings
+-- | It does not work for all cases, but it is enough for most of them
+simpleSplit :: String -> String /\ Foreign
+simpleSplit str =
+  let
+    decls :: Array String
+    decls = Str.split (Pattern ";") str
+
+    entries :: Array (String /\ String)
+    entries = map mkEntry decls
+
+    object :: Object String
+    object = Obj.fromFoldable entries
+
+    object' :: Object Foreign
+    object' = map toForeign object
+  in
+    "style" /\ toForeign object'
+
+  where
+  mkEntry :: String -> String /\ String
+  mkEntry str' =
+    let
+      parts :: Array String
+      parts = Str.split (Pattern ":") str'
+    in
+      case Array.uncons parts of
+        Just { head, tail } -> kebabToCamelCase head /\ Str.joinWith ":" tail
+        _ -> "" /\ ""
+
+--------------------------------------------------------------------------------
+--- FFI
+--------------------------------------------------------------------------------
+
 foreign import createVoidElement :: String -> Object Foreign -> JSX
 
 foreign import createElement :: String -> Object Foreign -> Array JSX -> JSX
 
-upperFirst :: String -> String
-upperFirst str =
-  case str of
-    "" -> ""
-    _ -> toUpper (Str.take 1 str) <> Str.drop 1 str
+--------------------------------------------------------------------------------
+--- ToForeign
+--------------------------------------------------------------------------------
+
+class ToForeign a where
+  toForeign :: a -> Foreign
 
 instance ToForeign JSX where
   toForeign = unsafeCoerce
@@ -148,5 +157,20 @@ instance ToForeign (Object Foreign) where
 instance ToForeign (EffectFn1 Foreign Unit) where
   toForeign = unsafeCoerce
 
-class ToForeign a where
-  toForeign :: a -> Foreign
+--------------------------------------------------------------------------------
+--- Utils
+--------------------------------------------------------------------------------
+
+upperFirst :: String -> String
+upperFirst str =
+  case str of
+    "" -> ""
+    _ -> toUpper (Str.take 1 str) <> Str.drop 1 str
+
+kebabToCamelCase :: String -> String
+kebabToCamelCase str =
+  let
+    parts :: Array String
+    parts = Str.split (Pattern "-") str
+  in
+    Str.joinWith "" $ map upperFirst parts
