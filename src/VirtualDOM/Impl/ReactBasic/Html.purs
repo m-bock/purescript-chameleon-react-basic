@@ -4,6 +4,7 @@ module VirtualDOM.Impl.ReactBasic.Html
   , ReactHtml
   , defaultConfig
   , runReactHtml
+  , simpleSplit
   , uppercaseStyleHack
   ) where
 
@@ -102,11 +103,8 @@ uppercaseStyleHack str = "STYLE" /\ toForeign str
 simpleSplit :: String -> String /\ Foreign
 simpleSplit str =
   let
-    decls :: Array String
-    decls = Str.split (Pattern ";") str
-
     entries :: Array (String /\ String)
-    entries = map mkEntry decls
+    entries = simpleSplitCore str
 
     object :: Object String
     object = Obj.fromFoldable entries
@@ -116,6 +114,15 @@ simpleSplit str =
   in
     "style" /\ toForeign object'
 
+simpleSplitCore :: String -> Array (String /\ String)
+simpleSplitCore str =
+  let
+    decls :: Array String
+    decls = Str.split (Pattern ";") str
+
+  in
+    map mkEntry decls
+
   where
   mkEntry :: String -> String /\ String
   mkEntry str' =
@@ -124,7 +131,9 @@ simpleSplit str =
       parts = Str.split (Pattern ":") str'
     in
       case Array.uncons parts of
-        Just { head, tail } -> kebabToCamelCase head /\ Str.joinWith ":" tail
+        Just { head, tail } ->
+          Str.trim (kebabToCamelCase head) /\
+            Str.trim (Str.joinWith ":" tail)
         _ -> "" /\ ""
 
 --------------------------------------------------------------------------------
