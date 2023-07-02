@@ -4,13 +4,15 @@ module VirtualDOM.Impl.ReactBasic.Html
   , ReactHtml
   , defaultConfig
   , runReactHtml
+  , uppercaseStyleHack
   ) where
 
 import Prelude
 
 import Data.Array as Arr
+import Data.Array as Array
 import Data.Maybe (Maybe(..))
-import Data.String (toUpper)
+import Data.String (Pattern(..), toUpper)
 import Data.String as Str
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect (Effect)
@@ -38,11 +40,44 @@ type Config a =
 
 defaultConfig :: ConfigOpt
 defaultConfig =
-  { cssStringToAttr: \str -> "STYLE" /\ toForeign str
-  -- ^ This is a hack to provide styles as string to React
-  -- It creates a warning in the console, you can provide a custom parser to avoid it
+  { cssStringToAttr: simpleSplit
   , key: Nothing
   }
+
+-- | This is a hack to provide styles as string to React
+-- | It creates a warning in the console
+uppercaseStyleHack :: String -> String /\ Foreign
+uppercaseStyleHack str = "STYLE" /\ toForeign str
+
+-- | This is a very simple parser for CSS strings
+-- | It does not work for all cases, but it is enough for most of them
+simpleSplit :: String -> String /\ Foreign
+simpleSplit str =
+  let
+    decls :: Array String
+    decls = Str.split (Pattern ";") str
+
+    entries :: Array (String /\ String)
+    entries = map mkEntry decls
+
+    object :: Object String
+    object = Obj.fromFoldable entries
+
+    object' :: Object Foreign
+    object' = map toForeign object
+  in
+    "style" /\ toForeign object'
+
+  where
+  mkEntry :: String -> String /\ String
+  mkEntry str' =
+    let
+      parts :: Array String
+      parts = Str.split (Pattern ":") str'
+    in
+      case Array.uncons parts of
+        Just { head, tail } -> head /\ Str.joinWith ":" tail
+        _ -> "" /\ ""
 
 newtype ReactHtml a = ReactHtml (Config a -> ConfigOpt -> JSX)
 
@@ -105,6 +140,9 @@ instance ToForeign a => ToForeign (Array a) where
   toForeign = unsafeCoerce <<< map toForeign
 
 instance ToForeign String where
+  toForeign = unsafeCoerce
+
+instance ToForeign (Object Foreign) where
   toForeign = unsafeCoerce
 
 instance ToForeign (EffectFn1 Foreign Unit) where
