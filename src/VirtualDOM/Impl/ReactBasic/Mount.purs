@@ -4,7 +4,7 @@ import Prelude
 
 import Effect (Effect)
 import React.Basic.DOM.Client as ReactBasicDOM
-import React.Basic.Hooks (useEffect, (/\))
+import React.Basic.Hooks (useEffectAlways, (/\))
 import React.Basic.Hooks as React
 import VirtualDOM.Impl.ReactBasic.Html (ReactHtml, defaultConfig, runReactHtml)
 import Web.DOM as DOM
@@ -25,8 +25,7 @@ type UI html msg sta =
 
 uiToReactComponent
   :: forall msg sta
-   . Eq sta
-  => { onStateChange :: sta -> Effect Unit }
+   . { onStateChange :: sta -> Effect Unit }
   -> UI ReactHtml msg sta
   -> React.Component {}
 uiToReactComponent { onStateChange } ui = do
@@ -34,7 +33,7 @@ uiToReactComponent { onStateChange } ui = do
 
     state /\ setState <- React.useState $ ui.init
 
-    useEffect state do
+    useEffectAlways do
       onStateChange state
       pure $ pure unit
 
