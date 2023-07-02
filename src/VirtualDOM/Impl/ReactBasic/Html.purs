@@ -12,7 +12,7 @@ import Prelude
 import Data.Array as Arr
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
-import Data.String (Pattern(..), toUpper)
+import Data.String (Pattern(..), toLower, toUpper)
 import Data.String as Str
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect (Effect)
@@ -167,10 +167,19 @@ upperFirst str =
     "" -> ""
     _ -> toUpper (Str.take 1 str) <> Str.drop 1 str
 
+lowerFirst :: String -> String
+lowerFirst str =
+  case str of
+    "" -> ""
+    _ -> toLower (Str.take 1 str) <> Str.drop 1 str
+
 kebabToCamelCase :: String -> String
 kebabToCamelCase str =
   let
     parts :: Array String
     parts = Str.split (Pattern "-") str
+
+    parts' :: Array String
+    parts' = map upperFirst parts
   in
-    Str.joinWith "" $ map upperFirst parts
+    lowerFirst $ Str.joinWith "" parts'
