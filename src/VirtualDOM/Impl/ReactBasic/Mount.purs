@@ -4,7 +4,7 @@ import Prelude
 
 import Effect (Effect)
 import React.Basic.DOM.Client as ReactBasicDOM
-import React.Basic.Hooks ((/\))
+import React.Basic.Hooks (useEffect, (/\))
 import React.Basic.Hooks as React
 import VirtualDOM.Impl.ReactBasic.Html (ReactHtml, defaultConfig, runReactHtml)
 import Web.DOM as DOM
@@ -23,15 +23,25 @@ type UI html msg sta =
 -- Halogen Component
 --------------------------------------------------------------------------------
 
-uiToReactComponent :: forall msg sta. UI ReactHtml msg sta -> React.Component {}
-uiToReactComponent ui = do
+uiToReactComponent
+  :: forall msg sta
+   . Eq sta
+  => { onStateChange :: sta -> Effect Unit }
+  -> UI ReactHtml msg sta
+  -> React.Component {}
+uiToReactComponent { onStateChange } ui = do
   React.component "Root" \_props -> React.do
 
     state /\ setState <- React.useState $ ui.init
 
+    useEffect state do
+      onStateChange state
+      pure $ pure unit
+
     let
       handler :: msg -> Effect Unit
-      handler msg = setState $ ui.update msg
+      handler msg = do
+        setState $ ui.update msg
 
     pure
       $ runReactHtml { handler } defaultConfig
@@ -41,10 +51,10 @@ uiToReactComponent ui = do
 -- Mounting
 --------------------------------------------------------------------------------
 
-uiMountAtId :: forall msg sta. String -> UI ReactHtml msg sta -> Effect Unit
-uiMountAtId id ui = do
+mountAtId :: String -> React.Component {} -> Effect Unit
+mountAtId id comp = do
   rootElem <- elemById id
-  app <- uiToReactComponent ui
+  app <- comp
   reactRoot <- ReactBasicDOM.createRoot rootElem
   ReactBasicDOM.renderRoot reactRoot (app {})
 
