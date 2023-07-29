@@ -1,7 +1,6 @@
 { name = "virtual-dom-react-basic"
 , dependencies =
   [ "arrays"
-  , "console"
   , "effect"
   , "foreign"
   , "foreign-object"

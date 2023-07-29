@@ -24,7 +24,7 @@ import Foreign.Object as Obj
 import React.Basic (JSX)
 import React.Basic.DOM (text) as DOM
 import Unsafe.Coerce (unsafeCoerce)
-import VirtualDOM (class Html, ElemName(..), Key, Prop(..))
+import VirtualDOM (class Html, class MapMaybe, ElemName(..), Key, Prop(..))
 
 --------------------------------------------------------------------------------
 --- ReactHtml
@@ -45,7 +45,23 @@ defaultConfig =
   , key: Nothing
   }
 
+class MaybeMsg html where
+  fromMaybeMsg :: forall msg. html (Maybe msg) -> html msg
+
 newtype ReactHtml a = ReactHtml (Config a -> ConfigOpt -> JSX)
+
+instance MaybeMsg ReactHtml where
+  fromMaybeMsg :: forall msg. ReactHtml (Maybe msg) -> ReactHtml msg
+  fromMaybeMsg (ReactHtml mkJsx) = ReactHtml \env cfgOpt ->
+    let
+      env' :: Config (Maybe msg)
+      env' =
+        { handler: case _ of
+            Nothing -> pure unit
+            Just msg -> env.handler msg
+        }
+    in
+      mkJsx env' cfgOpt
 
 instance Functor ReactHtml where
   map f (ReactHtml mkJsx) = ReactHtml \env -> mkJsx env
@@ -55,6 +71,20 @@ instance Functor ReactHtml where
 runReactHtml :: forall a. Config a -> ConfigOpt -> ReactHtml a -> JSX
 runReactHtml cfg cfgOpt (ReactHtml f) =
   f cfg cfgOpt
+
+instance MapMaybe ReactHtml where
+  mapMaybe :: forall msg1 msg2. (msg1 -> Maybe msg2) -> ReactHtml msg1 -> ReactHtml msg2
+  mapMaybe f (ReactHtml mkJsx) = ReactHtml \cfg opt ->
+    let
+      handler :: msg1 -> Effect Unit
+      handler msg = f msg # case _ of
+        Just msg' -> cfg.handler msg'
+        Nothing -> pure unit
+
+      cfg' :: Config msg1
+      cfg' = { handler }
+    in
+      mkJsx cfg' opt
 
 instance Html ReactHtml where
   elem (ElemName name) props1 children1 = ReactHtml $ \cfg cfgOpt ->

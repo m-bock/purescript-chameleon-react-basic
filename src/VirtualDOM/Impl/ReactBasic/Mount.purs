@@ -4,7 +4,7 @@ import Prelude
 
 import Effect (Effect)
 import React.Basic.DOM.Client as ReactBasicDOM
-import React.Basic.Hooks (useEffectAlways, (/\))
+import React.Basic.Hooks (JSX, Render, UseEffect, UseState, useEffectAlways, (/\))
 import React.Basic.Hooks as React
 import VirtualDOM.Impl.ReactBasic.Html (ReactHtml, defaultConfig, runReactHtml)
 import Web.DOM as DOM
@@ -27,7 +27,7 @@ uiToReactComponent
   :: forall msg sta
    . { onStateChange :: sta -> Effect Unit }
   -> UI ReactHtml msg sta
-  -> React.Component {}
+  -> React.Component {} -- {setState :: sta -> Effect Unit}
 uiToReactComponent { onStateChange } ui = do
   React.component "Root" \_props -> React.do
 
@@ -45,6 +45,33 @@ uiToReactComponent { onStateChange } ui = do
     pure
       $ runReactHtml { handler } defaultConfig
       $ ui.view state
+
+f
+  :: forall x90 sta msg
+   . UI ReactHtml msg sta
+  -> { onStateChange :: sta -> Effect Unit }
+  -> Render x90 (UseEffect Unit (UseState sta x90))
+       { jsx :: JSX
+       , setState :: (sta -> sta) -> Effect Unit
+       }
+f ui { onStateChange } = React.do
+  state /\ setState <- React.useState $ ui.init
+
+  useEffectAlways do
+    onStateChange state
+    pure $ pure unit
+
+  let
+    --handler :: msg -> Effect Unit
+    handler msg = do
+      setState $ ui.update msg
+
+  pure
+    { jsx:
+        runReactHtml { handler } defaultConfig
+          $ ui.view state
+    , setState
+    }
 
 --------------------------------------------------------------------------------
 -- Mounting
