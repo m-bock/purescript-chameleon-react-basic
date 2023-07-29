@@ -10,10 +10,11 @@ module VirtualDOM.Impl.ReactBasic.Html
 
 import Prelude
 
+import Data.Array (mapMaybe)
 import Data.Array as Arr
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
-import Data.String (Pattern(..), toLower, toUpper)
+import Data.String (Pattern(..), Replacement(..), toLower, toUpper)
 import Data.String as Str
 import Data.Tuple.Nested (type (/\), (/\))
 import Effect (Effect)
@@ -89,7 +90,7 @@ instance MapMaybe ReactHtml where
 instance Html ReactHtml where
   elem (ElemName name) props1 children1 = ReactHtml $ \cfg cfgOpt ->
     let
-      props2 = Obj.fromFoldable $ mkProp cfg cfgOpt <$> props1
+      props2 = Obj.fromFoldable $ mapMaybe (mkProp cfg cfgOpt) $ props1
       children2 = (\jsx -> runReactHtml cfg cfgOpt { key = Nothing } jsx) <$> children1
     in
       if Arr.null children2 then
@@ -99,7 +100,7 @@ instance Html ReactHtml where
 
   elemKeyed (ElemName name) props1 children1 = ReactHtml $ \cfg cfgOpt ->
     let
-      props2 = Obj.fromFoldable $ mkProp cfg cfgOpt <$> props1
+      props2 = Obj.fromFoldable $ mapMaybe (mkProp cfg cfgOpt) $ props1
       children2 = (\(key /\ jsx) -> runReactHtml cfg cfgOpt { key = Just key } jsx) <$> children1
     in
       if Arr.null children2 then
@@ -109,11 +110,12 @@ instance Html ReactHtml where
 
   text str = ReactHtml $ \_ _ -> DOM.text str
 
-mkProp :: forall a. Config a -> ConfigOpt -> Prop a -> String /\ Foreign
+mkProp :: forall a. Config a -> ConfigOpt -> Prop a -> Maybe (String /\ Foreign)
 mkProp { handler } { cssStringToAttr } = case _ of
-  Attr "style" v -> cssStringToAttr v
-  Attr k v -> k /\ toForeign v
-  Event n f -> ("on" <> upperFirst n) /\ toForeign
+  Attr "style" v -> Just $ cssStringToAttr v
+  Attr "" "" -> Nothing
+  Attr k v -> Just $ (kebabToCamelCase $ Str.replace (Pattern ":") (Replacement "-") k) /\ toForeign v
+  Event n f -> Just $  ("on" <> upperFirst n) /\ toForeign
     ( mkEffectFn1 \event -> case f event of
         Just action -> handler action
         Nothing -> pure unit
