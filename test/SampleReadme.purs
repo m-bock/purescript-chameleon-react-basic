@@ -1,7 +1,7 @@
--- # purescript-virtual-dom-react-basic
+-- # purescript-chameleon-react-basic
 --
 -- React Basic implementation of the general `Html` class from the
--- [virtual-dom](https://github.com/thought2/purescript-virtual-dom) package.
+-- [chameleon](https://github.com/thought2/purescript-chameleon) package.
 -- You can write your web views in a framework agnostic way and this package can
 -- convert them to react-basic views (and therefore to actual React
 -- components as well).
