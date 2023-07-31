@@ -1,0 +1,34 @@
+package:
+  dependencies:
+    - arrays
+    - effect
+    - foreign
+    - foreign-object
+    - maybe
+    - prelude
+    - react-basic
+    - react-basic-dom
+    - react-basic-hooks
+    - strings
+    - tuples
+    - unsafe-coerce
+    - chameleon
+    - web-dom
+  name: chameleon-react-basic
+  test:
+    dependencies: []
+    main: Test.Main
+
+  publish:
+    version: 0.0.1
+    license: BSD-3-Clause
+    location:
+      githubOwner: thought2
+      githubRepo: purescript-chameleon-react-basic
+
+workspace:
+  extra_packages: {}
+  package_set:
+    registry: 31.1.0
+  build_opts:
+    pedantic_packages: true

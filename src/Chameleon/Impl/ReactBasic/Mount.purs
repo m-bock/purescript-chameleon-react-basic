@@ -1,4 +1,4 @@
-module VirtualDOM.Impl.ReactBasic.Mount where
+module Chameleon.Impl.ReactBasic.Mount where
 
 import Prelude
 
@@ -6,7 +6,7 @@ import Effect (Effect)
 import React.Basic.DOM.Client as ReactBasicDOM
 import React.Basic.Hooks (useEffectAlways, (/\))
 import React.Basic.Hooks as React
-import VirtualDOM.Impl.ReactBasic.Html (ReactHtml, defaultConfig, runReactHtml)
+import Chameleon.Impl.ReactBasic.Html (ReactHtml, defaultConfig, runReactHtml)
 import Web.DOM as DOM
 
 --------------------------------------------------------------------------------

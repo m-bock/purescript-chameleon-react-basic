@@ -16,11 +16,11 @@ import Data.Tuple.Nested ((/\))
 import Effect (Effect)
 import React.Basic.DOM.Client as ReactBasicDOM
 import React.Basic.Hooks as React
-import VirtualDOM (class Html, text)
-import VirtualDOM.HTML.Attributes as VA
-import VirtualDOM.HTML.Elements as V
-import VirtualDOM.HTML.Events as VE
-import VirtualDOM.Impl.ReactBasic as VirtualDOM.React
+import Chameleon (class Html, text)
+import Chameleon.HTML.Attributes as VA
+import Chameleon.HTML.Elements as V
+import Chameleon.HTML.Events as VE
+import Chameleon.Impl.ReactBasic as Chameleon.React
 import Web.DOM as DOM
 
 -- ### Framework agnostic view
@@ -61,7 +61,7 @@ mkApp = do
       handler msg = setState $ counterUpdate msg
 
     pure
-      $ VirtualDOM.React.runReactHtml handler
+      $ Chameleon.React.runReactHtml handler
       $ counterView { count: state }
 
 -- ### Mount React component

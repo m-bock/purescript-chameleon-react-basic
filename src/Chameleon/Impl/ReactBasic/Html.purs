@@ -1,4 +1,4 @@
-module VirtualDOM.Impl.ReactBasic.Html
+module Chameleon.Impl.ReactBasic.Html
   ( Config
   , ConfigOpt
   , ReactHtml
@@ -25,7 +25,7 @@ import Foreign.Object as Obj
 import React.Basic (JSX)
 import React.Basic.DOM (text) as DOM
 import Unsafe.Coerce (unsafeCoerce)
-import VirtualDOM (class Html, class MapMaybe, ElemName(..), Key, Prop(..))
+import Chameleon (class Html, class MapMaybe, ElemName(..), Key, Prop(..))
 
 --------------------------------------------------------------------------------
 --- ReactHtml
