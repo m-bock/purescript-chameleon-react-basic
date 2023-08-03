@@ -1,7 +1,7 @@
 module Chameleon.Impl.ReactBasic.Html
   ( Config
   , ConfigOpt
-  , ReactHtml
+  , ReactHtml(..)
   , defaultConfig
   , runReactHtml
   , simpleSplit
