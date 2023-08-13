@@ -6,6 +6,9 @@ You can write your web views in a framework agnostic way and this package can
 convert them to react-basic views (and therefore to actual React
 components as well).
 
+## Complete example
+
+The below code shows how to integrate a chameleon view into a regular react basic component.
 
 <!-- START example -->
 *Main.purs:*

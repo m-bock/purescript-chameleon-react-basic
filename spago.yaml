@@ -1,7 +1,7 @@
 package:
   dependencies:
     - arrays: ">=7.2.1 <8.0.0"
-    - chameleon: ">=0.0.5 <0.0.6"
+    - chameleon: ">=1.0.0 <2.0.0"
     - effect: ">=4.0.0 <5.0.0"
     - foreign: ">=7.0.0 <8.0.0"
     - foreign-object: ">=4.1.0 <5.0.0"
@@ -16,11 +16,12 @@ package:
     - web-dom: ">=6.0.0 <7.0.0"
   name: chameleon-react-basic
   test:
-    dependencies: []
+    dependencies:
+      - console
     main: Test.Main
 
   publish:
-    version: 0.1.0
+    version: 1.0.0
     license: BSD-3-Clause
     location:
       githubOwner: thought2
