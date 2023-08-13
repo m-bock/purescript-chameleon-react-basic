@@ -1,13 +1,3 @@
--- # purescript-chameleon-react-basic
---
--- React Basic implementation of the general `Html` class from the
--- [chameleon](https://github.com/thought2/purescript-chameleon) package.
--- You can write your web views in a framework agnostic way and this package can
--- convert them to react-basic views (and therefore to actual React
--- components as well).
---
--- ## Example
-
 module Test.SampleReadme where
 
 import Prelude
@@ -16,14 +6,12 @@ import Data.Tuple.Nested ((/\))
 import Effect (Effect)
 import React.Basic.DOM.Client as ReactBasicDOM
 import React.Basic.Hooks as React
-import Chameleon (class Html, text)
-import Chameleon.HTML.Attributes as VA
-import Chameleon.HTML.Elements as V
-import Chameleon.HTML.Events as VE
+import Chameleon (class Html)
+import Chameleon as C
 import Chameleon.Impl.ReactBasic as Chameleon.React
 import Web.DOM as DOM
 
--- ### Framework agnostic view
+-- Framework agnostic part
 
 type State = Int
 
@@ -38,18 +26,18 @@ counterUpdate msg state = case msg of
 
 counterView :: forall html. Html html => { count :: Int } -> html Msg
 counterView props =
-  V.div
-    [ VA.style "border: 1px solid red"
+  C.div
+    [ C.style "border: 1px solid red"
     ]
-    [ text "Counter"
-    , V.div [] [ text $ show props.count ]
-    , V.button [ VE.onClick (Increment 1) ]
-        [ text "+" ]
-    , V.button [ VE.onClick (Decrement 1) ]
-        [ text "-" ]
+    [ C.text "Counter"
+    , C.div [] [ C.text $ show props.count ]
+    , C.button [ C.onClick (Increment 1) ]
+        [ C.text "+" ]
+    , C.button [ C.onClick (Decrement 1) ]
+        [ C.text "-" ]
     ]
 
--- ### React Basic Hook component
+-- React Basic Hook component
 
 mkApp :: React.Component {}
 mkApp = do
@@ -61,10 +49,12 @@ mkApp = do
       handler msg = setState $ counterUpdate msg
 
     pure
-      $ Chameleon.React.runReactHtml handler
+      $ Chameleon.React.runReactHtml
+          { handler }
+          Chameleon.React.defaultConfig
       $ counterView { count: state }
 
--- ### Mount React component
+-- Mount React component
 
 foreign import elemById :: String -> Effect DOM.Element
 
