@@ -114,6 +114,7 @@ mkProp :: forall a. Config a -> ConfigOpt -> Prop a -> Maybe (String /\ Foreign)
 mkProp { handler } { cssStringToAttr } = case _ of
   Attr "style" v -> Just $ cssStringToAttr v
   Attr "" "" -> Nothing
+  Attr k v | Str.stripPrefix (Pattern "data-") k /= Nothing -> Just (k /\ toForeign v)
   Attr k v -> Just $ (kebabToCamelCase $ Str.replace (Pattern ":") (Replacement "-") k) /\ toForeign v
   Event n f -> Just $  ("on" <> upperFirst n) /\ toForeign
     ( mkEffectFn1 \event -> case f event of
